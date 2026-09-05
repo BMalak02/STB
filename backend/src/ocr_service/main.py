@@ -12,6 +12,9 @@ import logging
 import tempfile
 import asyncio
 from typing import Dict, Any, List, Optional
+
+MAX_UPLOAD_BYTES = int(os.environ.get("OCR_MAX_UPLOAD_BYTES", str(12 * 1024 * 1024)))
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".pdf"}
 from pydantic import BaseModel, Field
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, status, Query
@@ -199,23 +202,28 @@ def redresser_image_automatiquement(temp_path: str):
 
 
 async def enregistrer_fichier_temporaire(file: UploadFile) -> str:
-    """
-    Sauvegarde le fichier téléversé dans un fichier temporaire compatible Windows/Linux
-    en fermant explicitement le descripteur de fichier avant utilisation par OpenCV.
-    """
+    """Sauvegarde et valide un upload avant de le remettre au moteur OCR."""
     ext = os.path.splitext(file.filename or "")[1].lower()
-    if not ext or ext not in [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff", ".pdf"]:
-        ext = ".jpg"
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail="Format de fichier non pris en charge")
 
     temp_fd, temp_path = tempfile.mkstemp(suffix=ext)
-    os.close(temp_fd)  # Fermer immédiatement le descripteur pour Windows
-
-    with open(temp_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
-    redresser_image_automatiquement(temp_path)
-
-    return temp_path
+    os.close(temp_fd)
+    total_bytes = 0
+    try:
+        with open(temp_path, "wb") as buffer:
+            while chunk := await file.read(1024 * 1024):
+                total_bytes += len(chunk)
+                if total_bytes > MAX_UPLOAD_BYTES:
+                    raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="Fichier trop volumineux")
+                buffer.write(chunk)
+        if total_bytes == 0:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Fichier vide")
+        redresser_image_automatiquement(temp_path)
+        return temp_path
+    except Exception:
+        supprimer_fichier_securise(temp_path)
+        raise
 
 
 def supprimer_fichier_securise(temp_path: str):
@@ -235,7 +243,7 @@ async def health_check():
     global ocr_engine
     ollama_ok = is_ollama_ready()
     return {
-        "status": "healthy",
+        "status": "healthy" if ocr_engine is not None else "degraded",
         "service": "STB Document Intelligence — OCR Hybride (Llama 3.2 Vision + EasyOCR)",
         "version": "2.1.0",
         "ocr_initialise": ocr_engine is not None,

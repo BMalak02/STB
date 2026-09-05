@@ -86,6 +86,10 @@ export class OcrVerificationService {
 
       const ext = path.extname(realPath).toLowerCase();
 
+      if (fs.statSync(realPath).size > 12 * 1024 * 1024) {
+        return { text: '', confidence: 0, engine: 'Rejected: file too large' };
+      }
+
       // Parse PDF file
       if (ext === '.pdf') {
         const dataBuffer = fs.readFileSync(realPath);

@@ -227,18 +227,24 @@ def extraire_json_du_texte(texte: str) -> Optional[Dict[str, Any]]:
         except json.JSONDecodeError:
             pass
 
-    # 2. Recherche d'accolades { ... }
-    brace_match = re.search(r"(\{[\s\S]*\})", texte, re.DOTALL)
-    if brace_match:
+    # 2. Parse the first balanced JSON object. Greedy regex parsing can consume
+    # multiple objects or braces contained inside quoted values.
+    decoder = json.JSONDecoder()
+    for index, character in enumerate(texte):
+        if character != "{":
+            continue
         try:
-            return json.loads(brace_match.group(1))
+            candidate, _ = decoder.raw_decode(texte[index:])
+            if isinstance(candidate, dict):
+                return candidate
         except json.JSONDecodeError:
-            pass
+            continue
 
     # 3. Essai de parsing direct
     try:
-        return json.loads(texte.strip())
-    except Exception:
+        parsed = json.loads(texte.strip())
+        return parsed if isinstance(parsed, dict) else None
+    except (TypeError, json.JSONDecodeError):
         return None
 
 

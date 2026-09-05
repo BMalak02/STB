@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import {
+  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StatusBar,
+} from 'react-native';
 import { useForm, Controller } from 'react-hook-form';
 import { useAuth } from '../hooks/useAuth';
 import { COLORS } from '../../../theme/colors';
@@ -11,148 +14,187 @@ export const LoginForm = () => {
   const { t, isRTL } = useTranslation();
   const { control, handleSubmit, formState: { errors } } = useForm();
   const { login, loading, error: authError } = useAuth();
+
   const [showPassword, setShowPassword] = useState(false);
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [localError, setLocalError]     = useState<string | null>(null);
+  const [rememberMe, setRememberMe]     = useState(true);
+  const [emailFocused, setEmailFocused]     = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
 
   const onSubmit = async (data: any) => {
     setLocalError(null);
     try {
       await login(data);
     } catch (err: any) {
-      setLocalError(err.message || 'Login failed');
+      setLocalError(err.message || 'Erreur de connexion');
     }
   };
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={styles.root}
     >
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        {/* Soft Blue Wave at top */}
-        <View style={styles.waveHeader}>
-          <View style={styles.logoBadge}>
-            <StbLogo size={70} color="#1565C0" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Logo + Branding ── */}
+        <View style={styles.logoSection}>
+          <View style={styles.logoWrapper}>
+            <StbLogo size={52} color="#1565C0" backgroundColor="#FFFFFF" />
           </View>
+          <Text style={styles.bankName}>SOCIÉTÉ TUNISIENNE DE BANQUE</Text>
+          <Text style={styles.appName}>SmartCredit</Text>
         </View>
 
-        <View style={styles.formCard}>
-          <Text style={[styles.title, { textAlign: isRTL ? 'right' : 'left' }]}>
+        {/* ── Form ── */}
+        <View style={styles.form}>
+          <Text style={[styles.heading, isRTL && styles.rtl]}>
             {t('login_title')}
           </Text>
-          <Text style={[styles.subtitle, { textAlign: isRTL ? 'right' : 'left' }]}>
+          <Text style={[styles.subheading, isRTL && styles.rtl]}>
             {t('login_sub')}
           </Text>
 
+          {/* Error banner */}
           {(authError || localError) && (
-            <View style={styles.errorContainer}>
+            <View style={styles.errorBanner}>
+              <Ionicons name="alert-circle-outline" size={16} color="#C62828" style={{ marginRight: 6 }} />
               <Text style={styles.errorText}>{authError || localError}</Text>
             </View>
           )}
 
-          {/* Email input field */}
-          <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
-            {t('login_email')}
-          </Text>
+          {/* Email */}
+          <Text style={[styles.label, isRTL && styles.rtl]}>{t('login_email')}</Text>
           <Controller
             control={control}
             rules={{ required: true }}
             name="email"
-            defaultValue="mohamed.benali@stb.com.tn"
+            defaultValue=""
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                placeholder="ex: mohamed.benali@stb.com.tn"
-                placeholderTextColor={COLORS.textMuted}
-                style={[styles.input, errors.email && styles.inputError, { textAlign: isRTL ? 'right' : 'left' }]}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value}
+                style={[
+                  styles.input,
+                  emailFocused && styles.inputFocused,
+                  errors.email && styles.inputInvalid,
+                  isRTL && styles.rtlInput,
+                ]}
+                placeholder={isRTL ? 'البريد الإلكتروني' : 'exemple@stb.com.tn'}
+                placeholderTextColor="#94A3B8"
                 keyboardType="email-address"
                 autoCapitalize="none"
+                value={value}
+                onChangeText={onChange}
+                onFocus={() => setEmailFocused(true)}
+                onBlur={() => { onBlur(); setEmailFocused(false); }}
               />
             )}
           />
           {errors.email && (
-            <Text style={[styles.validationText, { textAlign: isRTL ? 'right' : 'left' }]}>
-              {isRTL ? 'البريد الإلكتروني مطلوب' : 'L\'identifiant est requis'}
+            <Text style={[styles.fieldError, isRTL && styles.rtl]}>
+              {isRTL ? 'البريد الإلكتروني مطلوب' : 'Identifiant requis'}
             </Text>
           )}
 
-          {/* Password input field */}
-          <Text style={[styles.inputLabel, { textAlign: isRTL ? 'right' : 'left' }]}>
-            {t('login_password')}
-          </Text>
+          {/* Password */}
+          <Text style={[styles.label, isRTL && styles.rtl]}>{t('login_password')}</Text>
           <Controller
             control={control}
             rules={{ required: true }}
             name="password"
-            defaultValue="••••••••"
+            defaultValue=""
             render={({ field: { onChange, onBlur, value } }) => (
-              <View style={[styles.passwordContainer, isRTL && { flexDirection: 'row-reverse' }]}>
+              <View style={[
+                styles.inputRow,
+                passwordFocused && styles.inputFocused,
+                errors.password && styles.inputInvalid,
+                isRTL && { flexDirection: 'row-reverse' },
+              ]}>
                 <TextInput
+                  style={[styles.passwordInput, isRTL && styles.rtlInput]}
                   placeholder="••••••••"
-                  placeholderTextColor={COLORS.textMuted}
-                  style={[styles.passwordInput, errors.password && styles.inputError, { textAlign: isRTL ? 'right' : 'left' }]}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
+                  placeholderTextColor="#94A3B8"
                   secureTextEntry={!showPassword}
+                  value={value}
+                  onChangeText={onChange}
+                  onFocus={() => setPasswordFocused(true)}
+                  onBlur={() => { onBlur(); setPasswordFocused(false); }}
                 />
                 <TouchableOpacity
-                  style={styles.eyeButton}
+                  style={styles.eyeBtn}
                   onPress={() => setShowPassword(!showPassword)}
                 >
-                  <Ionicons 
-                    name={showPassword ? "eye-outline" : "eye-off-outline"} 
-                    size={20} 
-                    color={COLORS.textMuted} 
+                  <Ionicons
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={20}
+                    color="#94A3B8"
                   />
                 </TouchableOpacity>
               </View>
             )}
           />
           {errors.password && (
-            <Text style={[styles.validationText, { textAlign: isRTL ? 'right' : 'left' }]}>
-              {isRTL ? 'رمز المرور مطلوب' : 'Le code secret est requis'}
+            <Text style={[styles.fieldError, isRTL && styles.rtl]}>
+              {isRTL ? 'رمز المرور مطلوب' : 'Code secret requis'}
             </Text>
           )}
 
-          {/* Forgot Password */}
-          <TouchableOpacity style={styles.forgotLink}>
-            <Text style={[styles.forgotText, { textAlign: isRTL ? 'left' : 'right' }]}>
-              {t('login_forgot')}
-            </Text>
-          </TouchableOpacity>
+          {/* Remember me / Forgot */}
+          <View style={[styles.row, isRTL && { flexDirection: 'row-reverse' }]}>
+            <TouchableOpacity
+              style={[styles.row, { gap: 8 }, isRTL && { flexDirection: 'row-reverse' }]}
+              onPress={() => setRememberMe(!rememberMe)}
+            >
+              <View style={[styles.checkbox, rememberMe && styles.checkboxOn]}>
+                {rememberMe && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+              </View>
+              <Text style={styles.rememberText}>
+                {isRTL ? 'تذكرني' : 'Se souvenir'}
+              </Text>
+            </TouchableOpacity>
 
-          {/* CTA: Se connecter */}
+            <TouchableOpacity>
+              <Text style={styles.forgotText}>{t('login_forgot')}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Connect CTA */}
           <TouchableOpacity
-            style={styles.loginButton}
+            style={[styles.primaryBtn, loading && styles.primaryBtnDisabled]}
             onPress={handleSubmit(onSubmit)}
             disabled={loading}
           >
-            {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.loginButtonText}>{t('login_cta')}</Text>
-            )}
+            {loading
+              ? <ActivityIndicator color="#FFFFFF" />
+              : <Text style={styles.primaryBtnText}>{t('login_cta')}</Text>}
           </TouchableOpacity>
 
-          <View style={styles.dividerContainer}>
+          {/* Divider */}
+          <View style={styles.divider}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>{t('login_or')}</Text>
+            <Text style={styles.dividerLabel}>{t('login_or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
           {/* Biometrics */}
-          <TouchableOpacity style={[styles.biometricButton, isRTL && { flexDirection: 'row-reverse' }]} onPress={handleSubmit(onSubmit)}>
-            <Ionicons name="finger-print-outline" size={20} color={COLORS.primary} style={isRTL ? { marginLeft: 8 } : { marginRight: 8 }} />
-            <Text style={styles.biometricText}>{t('login_biometrics')}</Text>
+          <TouchableOpacity
+            style={[styles.outlineBtn, isRTL && { flexDirection: 'row-reverse' }]}
+            onPress={handleSubmit(onSubmit)}
+          >
+            <Ionicons name="finger-print-outline" size={20} color={COLORS.primary} style={{ marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 }} />
+            <Text style={styles.outlineBtnText}>{t('login_biometrics')}</Text>
           </TouchableOpacity>
+        </View>
 
-          {/* Signup redirection */}
-          <TouchableOpacity style={styles.registerContainer}>
-            <Text style={styles.registerText}>{t('login_no_account')}</Text>
-          </TouchableOpacity>
+        {/* ── Footer ── */}
+        <View style={styles.footer}>
+          <Ionicons name="call-outline" size={14} color="#94A3B8" />
+          <Text style={styles.footerText}>
+            {isRTL ? 'الدعم: 1800 200 400' : 'Support : 71 148 000'}
+          </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -160,171 +202,236 @@ export const LoginForm = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
-  scrollContainer: {
+  scroll: {
     flexGrow: 1,
-  },
-  waveHeader: {
-    backgroundColor: COLORS.primary,
-    height: 170,
-    borderBottomLeftRadius: 80,
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoBadge: {
-    position: 'absolute',
-    bottom: -35,
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  formCard: {
-    flex: 1,
     paddingHorizontal: 28,
-    paddingTop: 65,
-    paddingBottom: 30,
+    paddingBottom: 36,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 8,
+
+  /* ── Logo ── */
+  logoSection: {
+    alignItems: 'center',
+    paddingTop: 56,
+    paddingBottom: 36,
   },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-    lineHeight: 20,
-    marginBottom: 25,
+  logoWrapper: {
+    width: 72,
+    height: 72,
+    borderRadius: 18,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
   },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.text,
+  bankName: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  appName: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+  },
+
+  /* ── Form ── */
+  form: {
+    flex: 1,
+  },
+  heading: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0F172A',
     marginBottom: 6,
   },
-  input: {
-    backgroundColor: '#F5F7FA',
-    color: COLORS.text,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#ECEFF1',
-    fontSize: 15,
+  subheading: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 28,
+    lineHeight: 20,
   },
-  inputError: {
-    borderColor: COLORS.error,
+  rtl: {
+    textAlign: 'right',
   },
-  passwordContainer: {
+
+  /* Error banner */
+  errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
-    borderRadius: 10,
+    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#ECEFF1',
-    marginBottom: 12,
+    borderColor: '#FECACA',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 18,
+  },
+  errorText: {
+    fontSize: 13,
+    color: '#C62828',
+    fontWeight: '500',
+    flex: 1,
+  },
+
+  /* Labels */
+  label: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 7,
+  },
+
+  /* Inputs */
+  input: {
+    height: 46,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: '#0F172A',
+    marginBottom: 14,
+  },
+  inputRow: {
+    height: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    marginBottom: 14,
+  },
+  inputFocused: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#FFFFFF',
+  },
+  inputInvalid: {
+    borderColor: '#EF4444',
+  },
+  rtlInput: {
+    textAlign: 'right',
   },
   passwordInput: {
     flex: 1,
-    color: COLORS.text,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 15,
+    height: 46,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    color: '#0F172A',
   },
-  eyeButton: {
-    paddingHorizontal: 15,
-    height: '100%',
+  eyeBtn: {
+    width: 44,
+    height: 46,
     justifyContent: 'center',
-  },
-  validationText: {
-    color: COLORS.error,
-    fontSize: 11,
-    marginTop: -8,
-    marginBottom: 10,
-  },
-  errorContainer: {
-    backgroundColor: 'rgba(198, 40, 40, 0.1)',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  errorText: {
-    color: COLORS.error,
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  forgotLink: {
-    marginBottom: 20,
-  },
-  forgotText: {
-    color: COLORS.primary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  loginButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 15,
-    borderRadius: 12,
     alignItems: 'center',
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
+  fieldError: {
+    fontSize: 12,
+    color: '#EF4444',
+    marginTop: -10,
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
-  dividerContainer: {
+
+  /* Row helpers */
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxOn: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  rememberText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  forgotText: {
+    fontSize: 13,
+    color: COLORS.primary,
+    fontWeight: '600',
+  },
+
+  /* Buttons */
+  primaryBtn: {
+    height: 52,
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  primaryBtnDisabled: {
+    opacity: 0.7,
+  },
+  primaryBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 22,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#ECEFF1',
+    backgroundColor: '#E2E8F0',
   },
-  dividerText: {
-    color: COLORS.textMuted,
-    paddingHorizontal: 12,
-    fontSize: 13,
+  dividerLabel: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '500',
+    paddingHorizontal: 14,
   },
-  biometricButton: {
+  outlineBtn: {
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
+    borderColor: '#CBD5E1',
     borderRadius: 12,
-    paddingVertical: 13,
-    marginBottom: 25,
+    backgroundColor: '#FFFFFF',
   },
-  biometricText: {
-    color: COLORS.primary,
+  outlineBtnText: {
     fontSize: 15,
     fontWeight: '600',
+    color: COLORS.primary,
   },
-  registerContainer: {
+
+  /* Footer */
+  footer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 36,
+    gap: 5,
   },
-  registerText: {
-    color: COLORS.textMuted,
-    fontSize: 13,
+  footerText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
 });

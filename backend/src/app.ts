@@ -2,6 +2,7 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import path from 'path';
 import { errorHandler } from './middlewares/error.middleware';
 import router from './routes';
 import { swaggerUi, swaggerSpec } from './config/swagger';
@@ -12,9 +13,12 @@ const app: Application = express();
 
 // Standard Middlewares
 app.use(helmet());
-app.use(cors({ origin: '*' })); // Customize origins in prod
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Swagger documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

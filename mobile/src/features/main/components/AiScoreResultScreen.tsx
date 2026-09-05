@@ -2,324 +2,171 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
 import { COLORS } from '../../../theme/colors';
 import { useTranslation } from '../../../utils/i18n';
-import Svg, { Circle, G } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 
 interface AiScoreResultScreenProps {
   onContinue: () => void;
+  onNewRequest: () => void;
 }
 
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
-
-export const AiScoreResultScreen: React.FC<AiScoreResultScreenProps> = ({ onContinue }) => {
-  const { t, isRTL } = useTranslation();
-  const score = 78;
-  const radius = 60;
-  const strokeWidth = 12;
-  const circumference = 2 * Math.PI * radius;
-  
-  // Animation values
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(0.4)).current;
+export const AiScoreResultScreen: React.FC<AiScoreResultScreenProps> = ({ onContinue, onNewRequest }) => {
+  const { isRTL } = useTranslation();
+  const score = 74;
+  const scoreAnim = useRef(new Animated.Value(0)).current;
+  const barAnim   = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(progressAnim, {
-      toValue: score / 100,
-      duration: 1500,
-      useNativeDriver: true,
-    }).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0.4,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
+    Animated.parallel([
+      Animated.timing(scoreAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+      Animated.timing(barAnim, { toValue: score / 100, duration: 1000, useNativeDriver: false }),
+    ]).start();
   }, []);
 
-  const strokeDashoffset = progressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [circumference, 0],
-  });
+  const criteria = [
+    { label: 'Capacité de remboursement', pct: 82, ok: true },
+    { label: 'Historique de crédit', pct: 71, ok: true },
+    { label: 'Stabilité d\'emploi', pct: 90, ok: true },
+    { label: 'Taux d\'endettement actuel', pct: 38, ok: false },
+  ];
 
-  const getScoreColor = (val: number) => {
-    if (val >= 70) return COLORS.success;
-    if (val >= 40) return COLORS.warning;
-    return COLORS.error;
-  };
+  const tips = [
+    'Réduire les crédits en cours avant la demande',
+    'Maintenir un solde compte positif 6 mois consécutifs',
+    'Fournir les 3 dernières fiches de paie certifiées',
+  ];
 
-  const scoreColor = getScoreColor(score);
+  const riskColor = score >= 70 ? COLORS.success : score >= 50 ? COLORS.warning : COLORS.error;
+  const riskLabel = score >= 70 ? 'Risque faible' : score >= 50 ? 'Risque modéré' : 'Risque élevé';
+
+  const barWidth = barAnim.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] });
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        {/* Blue Header */}
-        <View style={styles.blueHeader}>
-          <Text style={styles.headerTitle}>{t('score_title')}</Text>
-          <Text style={styles.headerSub}>{t('score_sub')}</Text>
+    <ScrollView style={s.container} contentContainerStyle={s.content}>
+      {/* Score card */}
+      <View style={s.scoreCard}>
+        <Text style={s.scoreCardLabel}>Score d'éligibilité</Text>
+        <Animated.Text style={[s.scoreNumber, { opacity: scoreAnim }]}>{score}</Animated.Text>
+        <Text style={s.scoreMax}>/100</Text>
+
+        {/* Score bar */}
+        <View style={s.scoreBg}>
+          <Animated.View style={[s.scoreFill, { width: barWidth, backgroundColor: riskColor }]} />
         </View>
 
-        {/* Circular Score Gauge */}
-        <View style={styles.gaugeSection}>
-          <View style={styles.gaugeContainer}>
-            <Svg width={160} height={160} viewBox="0 0 160 160">
-              <G transform="rotate(-90 80 80)">
-                {/* Background Ring */}
-                <Circle
-                  cx="80"
-                  cy="80"
-                  r={radius}
-                  stroke="#ECEFF1"
-                  strokeWidth={strokeWidth}
-                  fill="transparent"
-                />
-                {/* Active Ring */}
-                <AnimatedCircle
-                  cx="80"
-                  cy="80"
-                  r={radius}
-                  stroke={scoreColor}
-                  strokeWidth={strokeWidth}
-                  fill="transparent"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={strokeDashoffset}
-                  strokeLinecap="round"
-                />
-              </G>
-            </Svg>
-            
-            {/* Centered Score */}
-            <View style={styles.scoreTextWrapper}>
-              <Text style={[styles.scoreValue, { color: COLORS.text }]}>{score}</Text>
-              <Text style={styles.scoreMax}>/ 100</Text>
-            </View>
-          </View>
-          
-          {/* Risk Level Badge */}
-          <View style={[styles.badge, { backgroundColor: 'rgba(46, 125, 50, 0.12)' }]}>
-            <Text style={[styles.badgeText, { color: COLORS.success }]}>{t('score_label')}</Text>
-          </View>
+        {/* Markers */}
+        <View style={s.markers}>
+          <Text style={[s.marker, { color: COLORS.error }]}>0</Text>
+          <Text style={[s.marker, { color: COLORS.warning, left: '50%' }]}>50</Text>
+          <Text style={[s.marker, { color: COLORS.success, right: 0 }]}>100</Text>
         </View>
 
-        {/* Score Breakdown Bars */}
-        <View style={styles.breakdownSection}>
-          <Text style={[styles.sectionTitle, { textAlign: isRTL ? 'right' : 'left' }]}>
-            {isRTL ? 'تقييم معايير القبول' : 'Synthèse des critères réglementaires'}
-          </Text>
-
-          {/* Factor 1 */}
-          <View style={styles.factorRow}>
-            <View style={styles.factorHeader}>
-              <Text style={styles.factorName}>{t('score_factor_income')}</Text>
-              <Text style={styles.factorPercent}>80%</Text>
-            </View>
-            <View style={styles.factorBarBg}>
-              <View style={[styles.factorBarActive, { width: '80%', backgroundColor: COLORS.primary }]} />
-            </View>
-          </View>
-
-          {/* Factor 2 */}
-          <View style={styles.factorRow}>
-            <View style={styles.factorHeader}>
-              <Text style={styles.factorName}>{t('score_factor_stability')}</Text>
-              <Text style={styles.factorPercent}>70%</Text>
-            </View>
-            <View style={styles.factorBarBg}>
-              <View style={[styles.factorBarActive, { width: '70%', backgroundColor: COLORS.primary }]} />
-            </View>
-          </View>
-
-          {/* Factor 3 */}
-          <View style={styles.factorRow}>
-            <View style={styles.factorHeader}>
-              <Text style={styles.factorName}>{t('score_factor_history')}</Text>
-              <Text style={styles.factorPercent}>75%</Text>
-            </View>
-            <View style={styles.factorBarBg}>
-              <View style={[styles.factorBarActive, { width: '75%', backgroundColor: COLORS.primary }]} />
-            </View>
-          </View>
-
-          {/* Factor 4 */}
-          <View style={styles.factorRow}>
-            <View style={styles.factorHeader}>
-              <Text style={styles.factorName}>{t('score_factor_dti')}</Text>
-              <Text style={styles.factorPercent}>60%</Text>
-            </View>
-            <View style={styles.factorBarBg}>
-              <View style={[styles.factorBarActive, { width: '60%', backgroundColor: COLORS.accent }]} />
-            </View>
-          </View>
+        <View style={[s.riskBadge, { backgroundColor: riskColor + '20' }]}>
+          <View style={[s.riskDot, { backgroundColor: riskColor }]} />
+          <Text style={[s.riskText, { color: riskColor }]}>{riskLabel}</Text>
         </View>
 
-        {/* Processing Status Card */}
-        <View style={styles.statusCard}>
-          <View style={styles.statusHeaderRow}>
-            <Animated.View style={[styles.pulseIndicator, { opacity: pulseAnim }]} />
-            <Text style={styles.statusTitle}>{t('score_status_card')}</Text>
-          </View>
-          <Text style={styles.statusDesc}>{t('score_status_est')}</Text>
-        </View>
+        <Text style={s.avgNote}>Moyenne nationale STB : 68 / 100</Text>
+      </View>
 
-        {/* Bottom CTA */}
-        <TouchableOpacity style={styles.ctaButton} onPress={onContinue}>
-          <Text style={styles.ctaButtonText}>{t('score_cta')}</Text>
+      {/* Criteria */}
+      <Text style={s.sectionTitle}>Détail des critères</Text>
+      {criteria.map((c, i) => (
+        <View key={i} style={s.criteriaRow}>
+          <View style={s.criteriaLabelRow}>
+            <Text style={[s.criteriaLabel, isRTL && { textAlign: 'right' }]}>{c.label}</Text>
+            <Text style={[s.criteriaPct, { color: c.ok ? COLORS.success : COLORS.warning }]}>{c.pct}%</Text>
+          </View>
+          <View style={s.criteriaBg}>
+            <View style={[s.criteriaFill, { width: `${c.pct}%`, backgroundColor: c.ok ? COLORS.success : COLORS.warning }]} />
+          </View>
+        </View>
+      ))}
+
+      {/* Tips */}
+      <View style={s.tipsBox}>
+        <View style={s.tipsHeader}>
+          <Ionicons name="bulb-outline" size={16} color={COLORS.primary} />
+          <Text style={s.tipsTitle}>Recommandations</Text>
+        </View>
+        {tips.map((tip, i) => (
+          <View key={i} style={s.tipRow}>
+            <Text style={s.tipNum}>{i + 1}.</Text>
+            <Text style={s.tipText}>{tip}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Actions */}
+      {score >= 60 ? (
+        <TouchableOpacity style={s.primaryBtn} onPress={onContinue}>
+          <Text style={s.primaryBtnText}>Poursuivre la demande</Text>
+          <Ionicons name={isRTL ? 'arrow-back' : 'arrow-forward'} size={18} color="#FFF" style={{ marginLeft: 6 }} />
         </TouchableOpacity>
-      </ScrollView>
-    </View>
+      ) : (
+        <>
+          <View style={s.declinedBox}>
+            <Ionicons name="information-circle-outline" size={18} color={COLORS.warning} />
+            <Text style={s.declinedText}>
+              Votre dossier ne répond pas encore aux critères d'éligibilité. Contactez votre conseiller STB.
+            </Text>
+          </View>
+          <TouchableOpacity style={s.outlineBtn} onPress={onNewRequest}>
+            <Text style={s.outlineBtnText}>Retour à l'accueil</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </ScrollView>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  contentContainer: {
-    paddingBottom: 40,
-  },
-  blueHeader: {
-    backgroundColor: COLORS.primary,
-    paddingTop: 35,
-    paddingHorizontal: 24,
-    paddingBottom: 25,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 6,
-  },
-  headerSub: {
-    fontSize: 13,
-    color: '#E3F2FD',
-    lineHeight: 18,
-  },
-  gaugeSection: {
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.white },
+  content: { padding: 20, paddingBottom: 40 },
+
+  scoreCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     alignItems: 'center',
-    marginTop: 30,
-    marginBottom: 20,
+    marginBottom: 28,
   },
-  gaugeContainer: {
-    position: 'relative',
-    width: 160,
-    height: 160,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scoreTextWrapper: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreValue: {
-    fontSize: 44,
-    fontWeight: '900',
-    lineHeight: 48,
-  },
-  scoreMax: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    fontWeight: 'bold',
-  },
-  badge: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginTop: 15,
-  },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-  },
-  breakdownSection: {
-    paddingHorizontal: 24,
-    marginVertical: 15,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 16,
-  },
-  factorRow: {
-    marginBottom: 16,
-  },
-  factorHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  factorName: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  factorPercent: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-  },
-  factorBarBg: {
-    height: 6,
-    backgroundColor: '#F0F4F8',
-    borderRadius: 3,
-  },
-  factorBarActive: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  statusCard: {
-    backgroundColor: '#F5F7FA',
-    marginHorizontal: 24,
-    borderRadius: 16,
-    padding: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.accent,
-    marginVertical: 15,
-  },
-  statusHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  pulseIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.accent,
-    marginRight: 8,
-  },
-  statusTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  statusDesc: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    paddingLeft: 16,
-  },
-  ctaButton: {
-    backgroundColor: COLORS.primary,
-    marginHorizontal: 24,
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 15,
-  },
-  ctaButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
+  scoreCardLabel: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
+  scoreNumber: { fontSize: 64, fontWeight: '700', color: COLORS.text, lineHeight: 68 },
+  scoreMax: { fontSize: 16, color: COLORS.textMuted, marginBottom: 16 },
+
+  scoreBg: { width: '100%', height: 8, backgroundColor: COLORS.border, borderRadius: 4, marginBottom: 8, overflow: 'hidden' },
+  scoreFill: { height: '100%', borderRadius: 4 },
+  markers: { flexDirection: 'row', width: '100%', marginBottom: 14, position: 'relative', height: 16 },
+  marker: { fontSize: 10, fontWeight: '700', position: 'absolute' },
+
+  riskBadge: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, paddingHorizontal: 12, borderRadius: 20, marginBottom: 10 },
+  riskDot: { width: 7, height: 7, borderRadius: 3.5, marginRight: 6 },
+  riskText: { fontSize: 12, fontWeight: '700' },
+  avgNote: { fontSize: 11, color: COLORS.textMuted, fontWeight: '500' },
+
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 14 },
+
+  criteriaRow: { marginBottom: 16 },
+  criteriaLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
+  criteriaLabel: { fontSize: 13, fontWeight: '600', color: COLORS.text },
+  criteriaPct: { fontSize: 13, fontWeight: '700' },
+  criteriaBg: { height: 6, backgroundColor: COLORS.border, borderRadius: 3, overflow: 'hidden' },
+  criteriaFill: { height: '100%', borderRadius: 3 },
+
+  tipsBox: { backgroundColor: COLORS.background, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: COLORS.border, marginTop: 8, marginBottom: 24 },
+  tipsHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  tipsTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text, marginLeft: 6 },
+  tipRow: { flexDirection: 'row', marginBottom: 6 },
+  tipNum: { fontSize: 12, fontWeight: '700', color: COLORS.primary, width: 20 },
+  tipText: { fontSize: 12, color: COLORS.textLight, flex: 1, lineHeight: 17 },
+
+  primaryBtn: { height: 52, flexDirection: 'row', backgroundColor: COLORS.primary, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  primaryBtnText: { fontSize: 15, fontWeight: '700', color: '#FFF' },
+  outlineBtn: { height: 52, borderWidth: 1.5, borderColor: COLORS.border, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  outlineBtnText: { fontSize: 15, fontWeight: '600', color: COLORS.textLight },
+
+  declinedBox: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FFF3E0', borderRadius: 10, padding: 14, marginBottom: 14, borderWidth: 1, borderColor: '#FFE0B2' },
+  declinedText: { fontSize: 12, color: COLORS.warning, marginLeft: 8, flex: 1, lineHeight: 18 },
 });

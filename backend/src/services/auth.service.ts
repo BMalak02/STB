@@ -36,6 +36,9 @@ export class AuthService {
       throw { status: 401, message: 'Invalid credentials' };
     }
 
+    if (!user.password) {
+      throw { status: 401, message: 'Invalid credentials' };
+    }
     const match = await comparePassword(passwordPlain, user.password);
     if (!match) {
       throw { status: 401, message: 'Invalid credentials' };
@@ -60,5 +63,29 @@ export class AuthService {
       throw { status: 404, message: 'User not found' };
     }
     return user;
+  }
+
+  async updateProfile(userId: string, data: { name?: string; phone?: string; address?: string; avatar?: string }) {
+    const user = await User.findByIdAndUpdate(userId, { $set: data }, { new: true }).select('-password');
+    if (!user) {
+      throw { status: 404, message: 'User not found' };
+    }
+    return user;
+  }
+
+  async updatePassword(userId: string, oldPasswordPlain: string, newPasswordPlain: string) {
+    const user = await User.findById(userId);
+    if (!user || !user.password) {
+      throw { status: 404, message: 'User not found' };
+    }
+
+    const match = await comparePassword(oldPasswordPlain, user.password);
+    if (!match) {
+      throw { status: 400, message: 'Ancien mot de passe incorrect' };
+    }
+
+    user.password = await hashPassword(newPasswordPlain);
+    await user.save();
+    return { message: 'Mot de passe mis à jour avec succès' };
   }
 }

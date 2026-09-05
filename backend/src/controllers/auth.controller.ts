@@ -43,4 +43,29 @@ export class AuthController {
       next(error);
     }
   };
+
+  updateProfile = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = (req as any).user?.id;
+      const user = await this.authService.updateProfile(userId, req.body);
+      res.status(HTTP_STATUS.OK).json(user);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updatePassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = (req as any).user?.id;
+      const { oldPassword, newPassword } = req.body;
+      if (!oldPassword || !newPassword) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({ message: 'Missing old or new password' });
+        return;
+      }
+      const result = await this.authService.updatePassword(userId, oldPassword, newPassword);
+      res.status(HTTP_STATUS.OK).json(result);
+    } catch (error) {
+      next(error);
+    }
+  };
 }

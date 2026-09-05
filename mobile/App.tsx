@@ -4,14 +4,17 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as StoreProvider } from 'react-redux';
 import { store } from './src/store';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { I18nProvider } from './src/utils/i18n';
 
 export default function App() {
   return (
     <StoreProvider store={store}>
-      <SafeAreaProvider>
-        <RootNavigator />
-        <StatusBar style="light" />
-      </SafeAreaProvider>
+      <I18nProvider>
+        <SafeAreaProvider>
+          <RootNavigator />
+          <StatusBar style="light" />
+        </SafeAreaProvider>
+      </I18nProvider>
     </StoreProvider>
   );
 }

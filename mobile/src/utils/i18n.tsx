@@ -118,7 +118,10 @@ const translations = {
     notif_time_d: 'j',
 
     // Screen 10: Profile
+    profile_products_section: 'Produits STB',
     profile_info_section: 'Informations personnelles',
+    profile_security_section: 'Sécurité et accès',
+    profile_notif_section: 'Notifications',
     profile_sec_section: 'Sécurité et accès',
     profile_sec_pwd: 'Changer le code secret',
     profile_sec_bio: 'Authentification par biométrie',
@@ -243,7 +246,10 @@ const translations = {
     notif_time_d: 'يوم',
 
     // Screen 10: Profile
+    profile_products_section: 'منتجات STB',
     profile_info_section: 'المعطيات الشخصية',
+    profile_security_section: 'الأمان والولوج',
+    profile_notif_section: 'الإشعارات',
     profile_sec_section: 'الأمان والولوج',
     profile_sec_pwd: 'تغيير الرمز السري',
     profile_sec_bio: 'تسجيل الدخول بالبيانات الحيوية',

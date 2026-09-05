@@ -4,128 +4,111 @@ import { COLORS } from '../../../theme/colors';
 import { useTranslation } from '../../../utils/i18n';
 import { Ionicons } from '@expo/vector-icons';
 
-interface NotificationsScreenProps {
-  onSelectNotification: (notifId: number) => void;
+interface Notification {
+  id: string;
+  type: 'info' | 'success' | 'urgent';
+  title: string;
+  body: string;
+  time: string;
+  read: boolean;
 }
 
-export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onSelectNotification }) => {
-  const { t, isRTL } = useTranslation();
+const INITIAL: Notification[] = [
+  { id: '1', type: 'urgent', title: 'Document manquant', body: 'Votre fiche de paie est requise pour finaliser l\'analyse.', time: 'Il y a 1h', read: false },
+  { id: '2', type: 'info', title: 'Dossier reçu', body: '#CR2026-0042 est en cours d\'instruction par nos équipes.', time: 'Hier à 14:32', read: false },
+  { id: '3', type: 'success', title: 'Simulation validée', body: 'Votre simulation de crédit personnel est prête.', time: 'Il y a 2 j', read: true },
+  { id: '4', type: 'info', title: 'Mise à jour système', body: 'La plateforme STB SmartCredit a été mise à jour.', time: 'Il y a 3 j', read: true },
+];
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 0,
-      title: 'Votre dossier a été approuvé !',
-      message: 'Félicitations, la Société Tunisienne de Banque a accepté votre demande.',
-      time: `2 ${t('notif_time_h')}`,
-      type: 'success', // success, info, warning, neutral
-      unread: true,
-      iconName: 'checkmark-circle-outline' as const,
-    },
-    {
-      id: 1,
-      title: 'Étude d\'éligibilité finalisée — Statut : Éligible',
-      message: 'Votre score de crédit indique un faible niveau de risque.',
-      time: `5 ${t('notif_time_h')}`,
-      type: 'info',
-      unread: true,
-      iconName: 'analytics-outline' as const,
-    },
-    {
-      id: 2,
-      title: 'Pièce manquante : Relevé de compte requis',
-      message: 'Veuillez télécharger un relevé de compte bancaire valide pour poursuivre.',
-      time: `1 ${t('notif_time_d')}`,
-      type: 'warning',
-      unread: false,
-      iconName: 'warning-outline' as const,
-    },
-    {
-      id: 3,
-      title: 'Ouverture de votre espace STB SmartCredit',
-      message: 'Votre compte a été configuré avec succès. Explorez nos offres de crédit.',
-      time: `3 ${t('notif_time_d')}`,
-      type: 'neutral',
-      unread: false,
-      iconName: 'business-outline' as const,
-    },
-  ]);
+const FILTERS = [
+  { key: 'all', label: 'Tout' },
+  { key: 'urgent', label: 'Urgent' },
+  { key: 'info', label: 'Info' },
+  { key: 'success', label: 'Succès' },
+] as const;
 
-  const handleMarkAllRead = () => {
-    const updated = notifications.map((n) => ({ ...n, unread: false }));
-    setNotifications(updated);
-  };
+type FilterKey = 'all' | 'info' | 'success' | 'urgent';
 
-  const handlePressItem = (id: number) => {
-    const updated = notifications.map((n) => {
-      if (n.id === id) {
-        return { ...n, unread: false };
-      }
-      return n;
-    });
-    setNotifications(updated);
-    onSelectNotification(id);
-  };
+const TYPE_CONFIG = {
+  info:    { icon: 'information-circle-outline' as const, color: COLORS.primary,  bg: COLORS.primaryLight },
+  success: { icon: 'checkmark-circle-outline' as const,   color: COLORS.success,  bg: COLORS.successLight },
+  urgent:  { icon: 'alert-circle-outline' as const,       color: COLORS.error,    bg: COLORS.errorLight   },
+};
 
-  const getBorderColor = (type: string) => {
-    switch (type) {
-      case 'success':
-        return COLORS.success;
-      case 'info':
-        return COLORS.accent;
-      case 'warning':
-        return COLORS.warning;
-      default:
-        return COLORS.border;
-    }
-  };
+export const NotificationsScreen = () => {
+  const { isRTL } = useTranslation();
+  const [notifs, setNotifs] = useState<Notification[]>(INITIAL);
+  const [filter, setFilter] = useState<FilterKey>('all');
+
+  const unread = notifs.filter(n => !n.read).length;
+  const visible = filter === 'all' ? notifs : notifs.filter(n => n.type === filter);
+
+  const markRead  = (id: string) => setNotifs(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const remove    = (id: string) => setNotifs(prev => prev.filter(n => n.id !== id));
+  const markAllRead = () => setNotifs(prev => prev.map(n => ({ ...n, read: true })));
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.headerRow, isRTL && { flexDirection: 'row-reverse' }]}>
-        <Text style={styles.title}>{t('notif_title')}</Text>
-        <TouchableOpacity onPress={handleMarkAllRead}>
-          <Text style={styles.markReadText}>{t('notif_mark_all')}</Text>
-        </TouchableOpacity>
+    <View style={s.container}>
+      {/* Header */}
+      <View style={s.header}>
+        <View style={s.headerLeft}>
+          <Text style={s.headerTitle}>Notifications</Text>
+          {unread > 0 && (
+            <View style={s.unreadBadge}><Text style={s.unreadNum}>{unread}</Text></View>
+          )}
+        </View>
+        {unread > 0 && (
+          <TouchableOpacity onPress={markAllRead}>
+            <Text style={s.markAll}>Tout lire</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
+      {/* Filters */}
+      <View style={s.filters}>
+        {FILTERS.map(f => (
+          <TouchableOpacity
+            key={f.key}
+            style={[s.filterBtn, filter === f.key && s.filterBtnActive]}
+            onPress={() => setFilter(f.key as FilterKey)}
+          >
+            <Text style={[s.filterText, filter === f.key && s.filterTextActive]}>{f.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* List */}
       <FlatList
-        data={notifications}
-        keyExtractor={(item) => item.id.toString()}
-        contentContainerStyle={styles.listContainer}
+        data={visible}
+        keyExtractor={n => n.id}
+        contentContainerStyle={s.list}
+        ListEmptyComponent={
+          <View style={s.empty}>
+            <Ionicons name="notifications-off-outline" size={32} color={COLORS.textHint} />
+            <Text style={s.emptyText}>Aucune notification</Text>
+          </View>
+        }
         renderItem={({ item }) => {
-          const borderColor = getBorderColor(item.type);
+          const cfg = TYPE_CONFIG[item.type];
           return (
             <TouchableOpacity
-              style={[
-                styles.card,
-                { borderLeftColor: isRTL ? COLORS.border : borderColor },
-                { borderRightColor: isRTL ? borderColor : COLORS.border },
-                { borderLeftWidth: isRTL ? 1 : 4 },
-                { borderRightWidth: isRTL ? 4 : 1 },
-                item.unread && styles.cardUnread,
-                isRTL && { flexDirection: 'row-reverse' },
-              ]}
-              onPress={() => handlePressItem(item.id)}
+              style={[s.notifRow, !item.read && s.notifUnread, isRTL && { flexDirection: 'row-reverse' }]}
+              onPress={() => markRead(item.id)}
             >
-              <View style={[styles.iconBox, isRTL ? { marginLeft: 12 } : { marginRight: 12 }]}>
-                <Ionicons name={item.iconName} size={20} color={borderColor} />
+              <View style={[s.notifIcon, { backgroundColor: cfg.bg }]}>
+                <Ionicons name={cfg.icon} size={18} color={cfg.color} />
               </View>
-              
-              <View style={styles.contentBox}>
-                <View style={[styles.titleRow, isRTL && { flexDirection: 'row-reverse' }]}>
-                  <Text style={[styles.itemTitle, item.unread && styles.itemTitleUnread]}>
-                    {item.title}
-                  </Text>
-                  <Text style={styles.timeText}>{item.time}</Text>
+              <View style={s.notifBody}>
+                <View style={[s.notifTitleRow, isRTL && { flexDirection: 'row-reverse' }]}>
+                  <Text style={[s.notifTitle, isRTL && { textAlign: 'right' }]}>{item.title}</Text>
+                  {!item.read && <View style={s.unreadDot} />}
                 </View>
-                <Text style={[styles.messageText, { textAlign: isRTL ? 'right' : 'left' }]}>
-                  {item.message}
-                </Text>
+                <Text style={[s.notifText, isRTL && { textAlign: 'right' }]} numberOfLines={2}>{item.body}</Text>
+                <Text style={s.notifTime}>{item.time}</Text>
               </View>
-
-              {item.unread && (
-                <View style={[styles.unreadDot, isRTL ? { left: 10 } : { right: 10 }]} />
-              )}
+              <TouchableOpacity style={s.trashBtn} onPress={() => remove(item.id)}>
+                <Ionicons name="trash-outline" size={16} color={COLORS.textHint} />
+              </TouchableOpacity>
             </TouchableOpacity>
           );
         }}
@@ -134,99 +117,33 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ onSele
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderColor: '#ECEFF1',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
-  },
-  markReadText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  listContainer: {
-    padding: 16,
-    paddingBottom: 30,
-  },
-  card: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderWidth: 1,
-    borderColor: '#ECEFF1',
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  cardUnread: {
-    backgroundColor: 'rgba(21, 101, 192, 0.01)',
-  },
-  iconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F5F7FA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  contentBox: {
-    flex: 1,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 6,
-  },
-  itemTitle: {
-    fontSize: 14,
-    color: COLORS.text,
-    flex: 1,
-    paddingRight: 10,
-    fontWeight: '500',
-  },
-  itemTitleUnread: {
-    fontWeight: 'bold',
-  },
-  timeText: {
-    fontSize: 10,
-    color: COLORS.textMuted,
-  },
-  messageText: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    lineHeight: 18,
-  },
-  unreadDot: {
-    position: 'absolute',
-    top: 16,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.accent,
-  },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.white },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14, borderBottomWidth: 1, borderColor: COLORS.border },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: COLORS.text },
+  unreadBadge: { backgroundColor: COLORS.error, minWidth: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginLeft: 8, paddingHorizontal: 5 },
+  unreadNum: { fontSize: 11, fontWeight: '700', color: '#FFF' },
+  markAll: { fontSize: 13, fontWeight: '600', color: COLORS.primary },
+
+  filters: { flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
+  filterBtn: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 20, backgroundColor: COLORS.background, borderWidth: 1, borderColor: COLORS.border },
+  filterBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  filterText: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
+  filterTextActive: { color: '#FFF' },
+
+  list: { paddingHorizontal: 16, paddingBottom: 30 },
+  empty: { alignItems: 'center', paddingTop: 60 },
+  emptyText: { fontSize: 14, color: COLORS.textHint, marginTop: 10, fontWeight: '500' },
+
+  notifRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 14, borderBottomWidth: 1, borderColor: COLORS.borderLight },
+  notifUnread: { backgroundColor: COLORS.background },
+  notifIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  notifBody: { flex: 1 },
+  notifTitleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
+  notifTitle: { fontSize: 14, fontWeight: '700', color: COLORS.text, flex: 1 },
+  notifText: { fontSize: 13, color: COLORS.textLight, lineHeight: 18, marginBottom: 4 },
+  notifTime: { fontSize: 11, color: COLORS.textHint, fontWeight: '500' },
+  unreadDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: COLORS.primary, marginLeft: 6 },
+  trashBtn: { paddingLeft: 10, paddingTop: 2 },
 });

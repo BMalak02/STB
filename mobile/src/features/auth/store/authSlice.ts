@@ -4,12 +4,14 @@ interface AuthState {
   token: string | null;
   user: any | null;
   isAuthenticated: boolean;
+  isOnboarded?: boolean;
 }
 
 const initialState: AuthState = {
   token: null,
   user: null,
   isAuthenticated: false,
+  isOnboarded: false,
 };
 
 export const authSlice = createSlice({

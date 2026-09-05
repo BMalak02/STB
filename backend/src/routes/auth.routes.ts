@@ -66,5 +66,7 @@ router.post('/login', controller.login);
  *         description: Success
  */
 router.get('/me', authMiddleware, controller.me);
+router.put('/profile', authMiddleware, controller.updateProfile);
+router.put('/password', authMiddleware, controller.updatePassword);
 
 export default router;

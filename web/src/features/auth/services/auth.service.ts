@@ -8,7 +8,7 @@ export const authService = {
   register: async (data: any): Promise<AuthResponse> => {
     return axiosClient.post('/auth/register', data);
   },
-  getProfile: async (): Promise<UserProfile> => {
+  getProfile: async (): Promise<any> => {
     return axiosClient.get('/auth/me');
   },
 };

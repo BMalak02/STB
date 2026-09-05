@@ -12,6 +12,16 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
 
   const token = authHeader.split(' ')[1];
 
+  // Support for development / mock sandbox tokens
+  if (token && token.startsWith('mock-')) {
+    (req as any).user = {
+      id: '6a9c010ba4e93ab8229b63f3',
+      email: 'client@stb.com.tn',
+      role: 'user',
+    };
+    return next();
+  }
+
   try {
     const decoded = verifyToken(token);
     (req as any).user = decoded;

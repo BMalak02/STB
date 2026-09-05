@@ -19,9 +19,10 @@ export const useAuth = () => {
       return data;
     } catch (err: any) {
       console.warn('Backend API connection failed, logging in with offline mock account for UI sandbox');
+      const fallbackName = credentials.email ? credentials.email.split('@')[0] : 'Client STB';
       const mockData = {
         token: 'mock-sandbox-token-12345',
-        user: { name: 'Mohamed', email: credentials.email || 'mohamed.benali@stb.com.tn' }
+        user: { name: fallbackName, email: credentials.email || 'client@stb.com.tn' }
       };
       dispatch(setCredentials(mockData));
       return mockData;

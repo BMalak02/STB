@@ -1,313 +1,211 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
+import {
+  View, Text, StyleSheet, SafeAreaView,
+  TouchableOpacity, Platform, StatusBar,
+} from 'react-native';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { COLORS } from '../theme/colors';
-import { Ionicons } from '@expo/vector-icons';
-
-// Localization provider
-import { I18nProvider, useTranslation } from '../utils/i18n';
 
 // Screens
-import { SplashScreen } from '../features/main/components/SplashScreen';
-import { OnboardingScreen } from '../features/main/components/OnboardingScreen';
-import { LoginForm } from '../features/auth/components/LoginForm';
 import { HomeDashboard } from '../features/main/components/HomeDashboard';
 import { NewRequestScreen } from '../features/main/components/NewRequestScreen';
-import { DocumentUploadScreen } from '../features/main/components/DocumentUploadScreen';
-import { AiScoreResultScreen } from '../features/main/components/AiScoreResultScreen';
 import { DossierTrackingScreen } from '../features/main/components/DossierTrackingScreen';
 import { NotificationsScreen } from '../features/main/components/NotificationsScreen';
 import { ProfileScreen } from '../features/main/components/ProfileScreen';
+import { DocumentUploadScreen } from '../features/main/components/DocumentUploadScreen';
+import { AiScoreResultScreen } from '../features/main/components/AiScoreResultScreen';
+import { ContractSignatureScreen } from '../features/main/components/ContractSignatureScreen';
+import { LoginForm } from '../features/auth/components/LoginForm';
+import { OnboardingScreen } from '../features/main/components/OnboardingScreen';
+import { SplashScreen } from '../features/main/components/SplashScreen';
+import { Ionicons } from '@expo/vector-icons';
 
-const RootNavigatorContent = () => {
-  const { t, isRTL } = useTranslation();
-  const { isAuthenticated } = useSelector((state: RootState) => state.auth);
+type Tab = 0 | 1 | 2 | 3 | 4;
+type CreditFlowStep = 'type' | 'docs' | 'score' | 'sign' | null;
 
-  // Core navigation states
-  const [showSplash, setShowSplash] = useState(true);
-  const [isOnboarded, setIsOnboarded] = useState(false);
-  const [currentTab, setCurrentTab] = useState(0); // 0: Home, 1: Request, 2: Tracking, 3: Notifs, 4: Profile
-  
-  // Credit application sub-state
-  const [activeCreditType, setActiveCreditType] = useState<string>('Personnel');
-  const [reqScreenState, setReqScreenState] = useState<'type' | 'upload' | 'score' | 'tracking'>('type');
-  
-  // Tracking alerts state
-  const [showDossierWarning, setShowDossierWarning] = useState(true);
+const TABS = [
+  { label: 'Accueil',   icon: 'home-outline'           as const },
+  { label: 'Demande',   icon: 'add-circle-outline'      as const },
+  { label: 'Dossier',   icon: 'folder-open-outline'     as const },
+  { label: 'Alertes',   icon: 'notifications-outline'   as const },
+  { label: 'Profil',    icon: 'person-outline'          as const },
+];
 
-  // Transition from request views
-  const handleNextToUpload = (creditType: string) => {
-    setActiveCreditType(creditType);
-    setReqScreenState('upload');
-  };
+export const RootNavigator = () => {
+  const { user, isOnboarded } = useSelector((state: RootState) => state.auth);
 
-  const handleFinishUploads = () => {
-    setReqScreenState('score');
-  };
+  const [splashDone, setSplashDone] = useState(false);
+  const [onboardDone, setOnboardDone] = useState(!!isOnboarded);
+  const [activeTab, setActiveTab] = useState<Tab>(0);
+  const [flowStep, setFlowStep] = useState<CreditFlowStep>(null);
+  const [creditType, setCreditType] = useState('Personnel');
+  const [notifCount] = useState(2);
 
-  const handleFinishScore = () => {
-    setReqScreenState('tracking');
-    setShowDossierWarning(false);
-  };
+  /* ── Not yet authenticated ── */
+  if (!splashDone) return <SplashScreen onFinish={() => setSplashDone(true)} />;
+  if (!onboardDone) return <OnboardingScreen onFinish={() => setOnboardDone(true)} />;
+  if (!user) return <LoginForm />;
 
-  const handleUploadMissing = () => {
-    setCurrentTab(1); 
-    setReqScreenState('upload');
-  };
+  /* ── Credit request flow overlay ── */
+  if (flowStep === 'type') {
+    return (
+      <SafeAreaView style={s.safe}>
+        <Header title="Nouvelle demande" onBack={() => setFlowStep(null)} />
+        <NewRequestScreen onNextStep={(type) => { setCreditType(type); setFlowStep('docs'); }} />
+      </SafeAreaView>
+    );
+  }
+  if (flowStep === 'docs') {
+    return (
+      <SafeAreaView style={s.safe}>
+        <Header title="Documents" onBack={() => setFlowStep('type')} />
+        <DocumentUploadScreen creditType={creditType} onFinishUploads={() => setFlowStep('score')} />
+      </SafeAreaView>
+    );
+  }
+  if (flowStep === 'score') {
+    return (
+      <SafeAreaView style={s.safe}>
+        <Header title="Résultat d'analyse" onBack={() => setFlowStep('docs')} />
+        <AiScoreResultScreen onContinue={() => setFlowStep('sign')} onNewRequest={() => setFlowStep(null)} />
+      </SafeAreaView>
+    );
+  }
+  if (flowStep === 'sign') {
+    return (
+      <SafeAreaView style={s.safe}>
+        <Header title="Signature du contrat" onBack={() => setFlowStep('score')} />
+        <ContractSignatureScreen onSigned={() => { setFlowStep(null); setActiveTab(2); }} />
+      </SafeAreaView>
+    );
+  }
 
-  const handleSelectNotification = (id: number) => {
-    if (id === 1) { // Eligibility analysis notification
-      setCurrentTab(1);
-      setReqScreenState('score');
-    } else if (id === 2) { // Missing document warning notification
-      setCurrentTab(2);
+  /* ── Main tab navigation ── */
+  const renderScreen = () => {
+    switch (activeTab) {
+      case 0: return <HomeDashboard onNavigateToTab={setActiveTab as (i: number) => void} onOpenDossierDetail={() => setActiveTab(2)} />;
+      case 1: return <NewRequestScreen onNextStep={(type) => { setCreditType(type); setFlowStep('docs'); }} />;
+      case 2: return <DossierTrackingScreen onNavigateToSign={() => setFlowStep('sign')} />;
+      case 3: return <NotificationsScreen />;
+      case 4: return <ProfileScreen />;
     }
   };
 
-  const renderActiveScreen = () => {
-    switch (currentTab) {
-      case 0:
-        return (
-          <HomeDashboard 
-            onNavigateToTab={(index) => {
-              setCurrentTab(index);
-              if (index === 1) setReqScreenState('type');
-            }}
-            onOpenDossierDetail={() => {
-              setCurrentTab(2);
-            }}
-          />
-        );
-      case 1:
-        if (reqScreenState === 'type') {
-          return <NewRequestScreen onNextStep={handleNextToUpload} />;
-        } else if (reqScreenState === 'upload') {
-          return <DocumentUploadScreen creditType={activeCreditType} onFinishUploads={handleFinishUploads} />;
-        } else if (reqScreenState === 'score') {
-          return <AiScoreResultScreen onContinue={handleFinishScore} />;
-        } else {
-          return <DossierTrackingScreen onUploadMissingDocument={handleUploadMissing} showWarning={false} />;
-        }
-      case 2:
-        return <DossierTrackingScreen onUploadMissingDocument={handleUploadMissing} showWarning={showDossierWarning} />;
-      case 3:
-        return <NotificationsScreen onSelectNotification={handleSelectNotification} />;
-      case 4:
-        return <ProfileScreen />;
-      default:
-        return <HomeDashboard onNavigateToTab={setCurrentTab} onOpenDossierDetail={() => setCurrentTab(2)} />;
-    }
-  };
+  const initials = (user?.name || 'U').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
 
-  const getHeaderTitle = () => {
-    switch (currentTab) {
-      case 0:
-        return 'STB SmartCredit';
-      case 1:
-        if (reqScreenState === 'type') return t('req_title');
-        if (reqScreenState === 'upload') return t('up_title');
-        if (reqScreenState === 'score') return t('score_title');
-        return t('nav_dossiers');
-      case 2:
-        return t('nav_dossiers');
-      case 3:
-        return t('notif_title');
-      case 4:
-        return t('nav_profile');
-      default:
-        return 'STB SmartCredit';
-    }
-  };
-
-  // 1. Splash Screen
-  if (showSplash) {
-    return <SplashScreen onFinish={() => setShowSplash(false)} />;
-  }
-
-  // 2. Onboarding
-  if (!isOnboarded) {
-    return <OnboardingScreen onFinish={() => setIsOnboarded(true)} />;
-  }
-
-  // 3. Authenticated Check
-  if (!isAuthenticated) {
-    return <LoginForm />;
-  }
-
-  // 4. Main App Shell with Bottom Tabs
   return (
-    <SafeAreaView style={styles.appContainer}>
-      {/* Header bar */}
-      <View style={[styles.headerBar, isRTL && { flexDirection: 'row-reverse' }]}>
-        <Text style={styles.headerTitle}>{getHeaderTitle()}</Text>
-        <Text style={styles.stbBrandTag}>Société Tunisienne de Banque</Text>
+    <SafeAreaView style={s.safe}>
+      <StatusBar barStyle="dark-content" backgroundColor={COLORS.white} />
+
+      {/* ── Top Bar ── */}
+      <View style={s.topBar}>
+        <View>
+          <Text style={s.topBarTitle}>{TABS[activeTab].label}</Text>
+          <Text style={s.topBarSub}>STB SmartCredit</Text>
+        </View>
+        <View style={s.avatarBadge}>
+          <Text style={s.avatarText}>{initials}</Text>
+        </View>
       </View>
 
-      {/* Screen area */}
-      <View style={styles.screenContainer}>
-        {renderActiveScreen()}
-      </View>
+      {/* ── Content ── */}
+      <View style={s.content}>{renderScreen()}</View>
 
-      {/* Bottom Tabs custom navigation */}
-      <View style={[styles.tabBar, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          onPress={() => setCurrentTab(0)}
-        >
-          <Ionicons 
-            name={currentTab === 0 ? "home" : "home-outline"} 
-            size={22} 
-            color={currentTab === 0 ? COLORS.primary : COLORS.textMuted} 
-          />
-          <Text style={[styles.tabLabel, currentTab === 0 && styles.tabLabelActive]}>
-            {t('nav_home')}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          onPress={() => {
-            setCurrentTab(1);
-            setReqScreenState('type');
-          }}
-        >
-          <Ionicons 
-            name={currentTab === 1 ? "add-circle" : "add-circle-outline"} 
-            size={22} 
-            color={currentTab === 1 ? COLORS.primary : COLORS.textMuted} 
-          />
-          <Text style={[styles.tabLabel, currentTab === 1 && styles.tabLabelActive]}>
-            {t('nav_request')}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          onPress={() => setCurrentTab(2)}
-        >
-          <Ionicons 
-            name={currentTab === 2 ? "folder" : "folder-outline"} 
-            size={22} 
-            color={currentTab === 2 ? COLORS.primary : COLORS.textMuted} 
-          />
-          <Text style={[styles.tabLabel, currentTab === 2 && styles.tabLabelActive]}>
-            {t('nav_dossiers')}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          onPress={() => setCurrentTab(3)}
-        >
-          <View style={styles.badgeContainer}>
-            <Ionicons 
-              name={currentTab === 3 ? "notifications" : "notifications-outline"} 
-              size={22} 
-              color={currentTab === 3 ? COLORS.primary : COLORS.textMuted} 
-            />
-            <View style={styles.notifBadge} />
-          </View>
-          <Text style={[styles.tabLabel, currentTab === 3 && styles.tabLabelActive]}>
-            {t('nav_notifications')}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          onPress={() => setCurrentTab(4)}
-        >
-          <Ionicons 
-            name={currentTab === 4 ? "person" : "person-outline"} 
-            size={22} 
-            color={currentTab === 4 ? COLORS.primary : COLORS.textMuted} 
-          />
-          <Text style={[styles.tabLabel, currentTab === 4 && styles.tabLabelActive]}>
-            {t('nav_profile')}
-          </Text>
-        </TouchableOpacity>
+      {/* ── Tab Bar ── */}
+      <View style={s.tabBar}>
+        {TABS.map((tab, i) => {
+          const active = activeTab === i;
+          const showBadge = i === 3 && notifCount > 0;
+          return (
+            <TouchableOpacity
+              key={i}
+              style={s.tabItem}
+              onPress={() => setActiveTab(i as Tab)}
+            >
+              <View style={s.tabIconWrap}>
+                <Ionicons
+                  name={active ? tab.icon.replace('-outline', '') as any : tab.icon}
+                  size={22}
+                  color={active ? COLORS.primary : COLORS.textHint}
+                />
+                {showBadge && (
+                  <View style={s.tabBadge}>
+                    <Text style={s.tabBadgeText}>{notifCount}</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={[s.tabLabel, active && s.tabLabelActive]}>{tab.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </SafeAreaView>
   );
 };
 
-export const RootNavigator = () => {
-  return (
-    <I18nProvider>
-      <RootNavigatorContent />
-    </I18nProvider>
-  );
-};
+/* ── Shared back-header ── */
+const Header = ({ title, onBack }: { title: string; onBack: () => void }) => (
+  <View style={s.backHeader}>
+    <TouchableOpacity style={s.backBtn} onPress={onBack}>
+      <Ionicons name="arrow-back" size={22} color={COLORS.text} />
+    </TouchableOpacity>
+    <Text style={s.backTitle}>{title}</Text>
+    <View style={{ width: 40 }} />
+  </View>
+);
 
-const styles = StyleSheet.create({
-  appContainer: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  headerBar: {
-    height: Platform.OS === 'ios' ? 44 : 56,
+const s = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.white },
+
+  topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderColor: '#ECEFF1',
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
   },
-  headerTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: COLORS.text,
+  topBarTitle: { fontSize: 17, fontWeight: '700', color: COLORS.text },
+  topBarSub: { fontSize: 11, color: COLORS.textMuted, fontWeight: '500', marginTop: 1 },
+  avatarBadge: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: COLORS.primaryLight,
+    borderWidth: 1.5, borderColor: COLORS.primaryMid,
+    justifyContent: 'center', alignItems: 'center',
   },
-  stbBrandTag: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: COLORS.primary,
-    textTransform: 'uppercase',
-  },
-  screenContainer: {
-    flex: 1,
-  },
+  avatarText: { fontSize: 13, fontWeight: '700', color: COLORS.primary },
+
+  content: { flex: 1 },
+
   tabBar: {
-    height: 62,
-    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
     borderTopWidth: 1,
-    borderColor: '#ECEFF1',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingBottom: Platform.OS === 'ios' ? 8 : 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 8,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+    paddingBottom: Platform.OS === 'ios' ? 16 : 6,
+    paddingTop: 8,
   },
-  tabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    height: '100%',
-  },
-  tabLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-    marginTop: 3,
-  },
-  tabLabelActive: {
-    color: COLORS.primary,
-    fontWeight: 'bold',
-  },
-  badgeContainer: {
-    position: 'relative',
-  },
-  notifBadge: {
-    position: 'absolute',
-    top: -1,
-    right: -1,
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
+  tabItem: { flex: 1, alignItems: 'center' },
+  tabIconWrap: { position: 'relative' },
+  tabLabel: { fontSize: 9, fontWeight: '600', color: COLORS.textHint, marginTop: 3 },
+  tabLabelActive: { color: COLORS.primary },
+  tabBadge: {
+    position: 'absolute', top: -4, right: -6,
     backgroundColor: COLORS.error,
+    minWidth: 14, height: 14, borderRadius: 7,
+    justifyContent: 'center', alignItems: 'center',
   },
+  tabBadgeText: { fontSize: 8, fontWeight: '700', color: '#FFF' },
+
+  backHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
+  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  backTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text },
 });

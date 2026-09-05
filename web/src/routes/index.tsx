@@ -1,27 +1,24 @@
 import React from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { MainLayout } from '../layouts/MainLayout';
-import { LoginForm } from '../features/auth/components/LoginForm';
-
-const Home = () => (
-  <div class="space-y-6 text-center py-20">
-    <h1 class="text-5xl font-extrabold tracking-tight sm:text-6xl bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">
-      Architecture Modulaire React
-    </h1>
-    <p class="max-w-2xl mx-auto text-lg text-slate-400">
-      React.js, Vite, TypeScript, Tailwind, TanStack Query, Redux Toolkit, React Router et Hook Form.
-    </p>
-  </div>
-);
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { AgentLoginForm } from '../features/auth/components/AgentLoginForm';
+import { AgentDashboard } from '../features/agent/components/AgentDashboard';
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <MainLayout />,
-    children: [
-      { index: true, element: <Home /> },
-      { path: 'login', element: <LoginForm /> },
-    ],
+    element: <AgentDashboard />,
+  },
+  {
+    path: '/agent',
+    element: <AgentDashboard />,
+  },
+  {
+    path: '/login',
+    element: <AgentLoginForm />,
+  },
+  {
+    path: '*',
+    element: <Navigate to="/agent" replace />,
   },
 ]);
 

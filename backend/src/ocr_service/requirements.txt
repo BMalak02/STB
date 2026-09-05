@@ -1,0 +1,30 @@
+# STB Document Intelligence — OCR Microservice Dependencies
+# Python >= 3.9 requis
+# Installation : pip install -r requirements.txt
+
+# ── Serveur Web Asynchrone ───────────────────────────────────────────
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+
+# ── Validation & Schémas ────────────────────────────────────────────
+pydantic>=2.6.0
+
+# ── Vision & OCR ────────────────────────────────────────────────────
+easyocr>=1.7.1
+Pillow>=10.3.0
+opencv-python-headless>=4.9.0.80
+numpy>=1.26.0
+
+# ── Llama / Ollama Client ───────────────────────────────────────────
+ollama>=0.2.1
+
+# ── PDF Support ─────────────────────────────────────────────────────
+pypdf2>=3.0.1
+pdfminer.six>=20221105
+
+# ── Utilitaires ─────────────────────────────────────────────────────
+requests>=2.31.0
+python-dotenv>=1.0.1
+aiofiles>=23.2.1
+httpx>=0.27.0

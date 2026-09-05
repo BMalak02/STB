@@ -286,7 +286,7 @@ const s = StyleSheet.create({
     position: 'relative',
   },
   padPlaceholder: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
   },

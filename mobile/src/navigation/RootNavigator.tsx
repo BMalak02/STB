@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView,
+  View, Text, StyleSheet,
   TouchableOpacity, Platform, StatusBar,
 } from 'react-native';
 import { useSelector } from 'react-redux';
@@ -20,6 +20,7 @@ import { LoginForm } from '../features/auth/components/LoginForm';
 import { OnboardingScreen } from '../features/main/components/OnboardingScreen';
 import { SplashScreen } from '../features/main/components/SplashScreen';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Tab = 0 | 1 | 2 | 3 | 4;
 type CreditFlowStep = 'type' | 'docs' | 'score' | 'sign' | null;
